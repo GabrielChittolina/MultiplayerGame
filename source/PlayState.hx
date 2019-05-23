@@ -4,27 +4,42 @@ import flixel.FlxState;
 import flixel.group.FlxGroup;
 
 class PlayState extends FlxState {
-	var _players:FlxGroup;
+	public var players:FlxGroup;
     var _multiplayer:Multiplayer;
+	public var bullets:FlxGroup;
 
 	override public function create():Void {
 		super.create();
-		_players = new FlxGroup();
+		players = new FlxGroup();
+		bullets = new FlxGroup();
 
-		_players.add(new Player(0, UP, DOWN, LEFT, RIGHT));
-		_players.add(new Player(1, W, S, A, D));
+		for (i in 0...100) {
+			bullets.add(new Bullet());
+		}
+
+		players.add(new Player(0, [UP, DOWN, LEFT, RIGHT, SPACE]));
         add(_multiplayer = new Multiplayer());
-		add(_players);
+		add(players);
+		add(bullets);
 	}
 
 	public function getPlayerById(id:Int):Player {
-        for (p in _players) {
-            if (cast(p, Player)._id == id) {
+        for (p in players) {
+            if (cast(p, Player).id == id) {
                 return cast(p, Player);
             }
 		}
         return null;
     }
+
+	public function shoot(x:Float, y:Float):Void {
+		var b:Bullet = cast bullets.getFirstAvailable();
+
+		if (b != null) {
+			b.reset(x, y);
+			b.velocity.x = 40;
+		}
+	}
 
 	override public function update(elapsed:Float):Void {
 		super.update(elapsed);
