@@ -6,10 +6,14 @@ import flixel.FlxG;
 
 class Multiplayer extends FlxSprite {
     public static inline var OP_NEW_PLAYER:String = 'n';
-    public static inline var OP_MOVE:String = 'm'; // [OP_MOVE, id, x, y, velocity.x, velocity.y]
+    public static inline var OP_MOVE:String = 'm'; // [OP_MOVE, id, x, y, velocity.x, velocity.y, acceleration.x, acceleration.y]
     public static inline var OP_SHOOT:String = 'b'; // [id, x, y]
+    public static inline var OP_DEAD:String = 'd'; // [id, x, y]
     
     var _count:Float = 0;
+    var _overflowTimer:Float = 0;
+    var _overflowInterval:Float = 5; // Minimum time, in seconds, to prevent overload/overflow
+    var _overflowLastOp:String = "";
     var _idJogador:Int;
     
     public function new() {
@@ -20,6 +24,35 @@ class Multiplayer extends FlxSprite {
     public function send(msg:Array<Any>):Void {
         // Acoxambrando comunicação
         onMessage(msg);
+    }
+
+    public function sendMove(p:Player):Void {
+        sendOnOverflow([
+            Multiplayer.OP_MOVE, 
+            getMyMultiplayerId(), 
+            p.x, 
+            p.y, 
+            p.velocity.x, 
+            p.velocity.y, 
+            p.acceleration.x, 
+            p.acceleration.y
+        ]);
+    }
+
+    public function getMyMultiplayerId():Int {
+        return _idJogador;
+    }
+
+    public function sendOnOverflow(msg:Array<Any>):Void {
+        var op = msg[0];
+
+        if (op == _overflowLastOp) {
+            return;
+        }
+
+        _overflowLastOp = op;
+        send(msg);
+        FlxG.log.add("AAAAAA");
     }
     
     // Testa se o id não existe
@@ -51,15 +84,21 @@ class Multiplayer extends FlxSprite {
         switch (op) {
             case OP_MOVE:
                 opMove(
-                    cast(msg[1], Int), 
-                    cast(msg[2], Int), 
-                    cast(msg[3], Int), 
+                    idRemetente, 
+                    cast(msg[2], Int), // x
+                    cast(msg[3], Int), // y
                     cast(msg[4], Float), 
                     cast(msg[5], Float)
                 );
             case OP_SHOOT:
                 opBullet(
-                    cast(msg[1], Int), 
+                    idRemetente, 
+                    cast(msg[2], Int), 
+                    cast(msg[3], Int)
+                );
+            case OP_DEAD:
+                opDead(
+                    idRemetente,
                     cast(msg[2], Int), 
                     cast(msg[3], Int)
                 );
@@ -68,23 +107,43 @@ class Multiplayer extends FlxSprite {
         }
     }
 
-    public function opBullet(id:Int, x:Int, y:Int) {
+    public function opDead(id:Int, x:Int, y:Int):Void {
+        var p:Player = getPlayer(id);
+
+        if (p == null) return;
+
+        p.x = x;
+        p.y = y;
+        p.kill();
+    }
+
+    public function getState():PlayState {
+        var state:PlayState = cast(FlxG.state, PlayState);
+        return state;
+    }
+
+    public function getPlayer(id:Int):Player {
+        var state:PlayState = getState();
+        var p = state.getPlayerById(id);
+        return p;
+    }
+
+    public function opBullet(id:Int, x:Int, y:Int):Void {
         if (id == _idJogador) return;
         
-        var state:PlayState = cast(FlxG.state, PlayState);
-        var p:Player = state.getPlayerById(id);
+        var p:Player = getPlayer(id);
 
         if (p != null) {
             p.x = x;
             p.y = y;
-            state.shoot(x, y);
+            getState().shoot(x, y);
         }
     }
 
     public function opMove(id:Int, x:Int, y:Int, vx:Float, vy:Float):Void {
         if (id == _idJogador) return;
         
-        var p:Player = cast(FlxG.state, PlayState).getPlayerById(id);
+        var p:Player = getPlayer(id);
             if (p != null) {
                 p.x = x;
                 p.y = y;
@@ -96,15 +155,24 @@ class Multiplayer extends FlxSprite {
     override public function update(elapsed:Float):Void {
         super.update(elapsed);
         _count += elapsed;
+        _overflowTimer += elapsed;
+
+        if (_overflowTimer >= _overflowInterval) {
+            _overflowTimer = 0;
+            _overflowLastOp = "";
+        }
 
         if (_count >= 3) {
             _count = 0;
-            send([OP_MOVE, 1, 20, 0, 10, 10]);
-            send([OP_MOVE, 2, 40, 0, 10, 10]);
-            send([OP_MOVE, 3, 60, 0, 10, 10]);
-            send([OP_MOVE, 4, 80, 0, 10, 10]);
+            sendOnOverflow([OP_MOVE, 1, 20, 0, 10, 10]);
+            sendOnOverflow([OP_MOVE, 2, 40, 0, 10, 10]);
+            sendOnOverflow([OP_MOVE, 3, 60, 0, 10, 10]);
+            sendOnOverflow([OP_MOVE, 4, 80, 0, 10, 10]);
 
             send([OP_SHOOT, 1, 100, 100]);
+
+            send([OP_DEAD, 2, 100, 100]);
+            send([OP_DEAD, 3, 100, 100]);
         }
     }
 }

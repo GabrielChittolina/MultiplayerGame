@@ -8,6 +8,7 @@ class Player extends FlxSprite {
     public var id:Int;
     public var simulated:Bool;
     public var lastSimulation:Date;
+    public var speed:Int = 20;
 
     var _upKey:FlxKey;
     var _downKey:FlxKey;
@@ -25,6 +26,9 @@ class Player extends FlxSprite {
             lastSimulation = Date.now();
             return;
         }
+
+        velocity.set(0, 0);
+        maxVelocity.set(50, 50);
         
         _upKey = keys[0];
         _downKey = keys[1];
@@ -36,24 +40,41 @@ class Player extends FlxSprite {
     override public function update(elapsed:Float):Void {
         super.update(elapsed);
 
+        var send = false;
+
         if (FlxG.keys.anyPressed([_upKey])) {
-            y -= 1;
+            acceleration.y = -speed;
+            send = true;
         }
 
         if (FlxG.keys.anyPressed([_downKey])) {
-            y += 1;
+            acceleration.y = speed;
+            send = true;
         }
 
         if (FlxG.keys.anyPressed([_leftKey])) {
-            x -= 1;
+            acceleration.x = -speed;
+            send = true;
         }
         
         if (FlxG.keys.anyPressed([_rightKey])) {
-            x += 1;
+            acceleration.x = speed;
+            send = true;
         }
-        
+
+        var mps = cast(FlxG.state, PlayState).multiplayer;
+        if (send) {
+            mps.sendMove(this);
+        }
+
         if (FlxG.keys.anyJustPressed([_fireKey])) {
             cast(FlxG.state, PlayState).shoot(x, y);
+            mps.send([
+                Multiplayer.OP_SHOOT, 
+                mps.getMyMultiplayerId(), 
+                x, 
+                y
+            ]);
         }
     }
 }

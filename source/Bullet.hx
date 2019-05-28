@@ -6,7 +6,7 @@ import flixel.FlxG;
 class Bullet extends FlxSprite {
     public function new() {
         super();
-        makeGraphic(10, 10, 0xffff0000);
+        makeGraphic(100, 100, 0xffff0000);
         kill();
     }
 

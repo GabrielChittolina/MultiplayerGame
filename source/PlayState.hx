@@ -5,7 +5,7 @@ import flixel.group.FlxGroup;
 
 class PlayState extends FlxState {
 	public var players:FlxGroup;
-    var _multiplayer:Multiplayer;
+    public var multiplayer:Multiplayer;
 	public var bullets:FlxGroup;
 
 	override public function create():Void {
@@ -18,7 +18,7 @@ class PlayState extends FlxState {
 		}
 
 		players.add(new Player(0, [UP, DOWN, LEFT, RIGHT, SPACE]));
-        add(_multiplayer = new Multiplayer());
+        add(multiplayer = new Multiplayer());
 		add(players);
 		add(bullets);
 	}
@@ -37,7 +37,7 @@ class PlayState extends FlxState {
 
 		if (b != null) {
 			b.reset(x, y);
-			b.velocity.x = 40;
+			b.velocity.x = 400;
 		}
 	}
 
