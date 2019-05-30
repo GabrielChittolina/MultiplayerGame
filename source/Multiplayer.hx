@@ -3,8 +3,13 @@ package;
 import flixel.input.keyboard.FlxKey;
 import flixel.FlxSprite;
 import flixel.FlxG;
+import networking.Network;
+import networking.utils.NetworkEvent;
+import networking.utils.NetworkMode;
 
 class Multiplayer extends FlxSprite {
+    public static inline var SERVER_IP:String = '127.0.0.1';
+
     public static inline var OP_NEW_PLAYER:String = 'n';
     public static inline var OP_MOVE:String = 'm'; // [OP_MOVE, id, x, y, velocity.x, velocity.y, acceleration.x, acceleration.y]
     public static inline var OP_SHOOT:String = 'b'; // [id, x, y]
@@ -19,11 +24,36 @@ class Multiplayer extends FlxSprite {
     public function new() {
         super();
         _idJogador = -1;
+        createClient();
+    }
+
+    function createClient() {
+        var client = Network.registerSession(NetworkMode.CLIENT, {
+            ip: SERVER_IP, 
+            port: 8888, flash_policy_file_url: 'http://'+ SERVER_IP +':9999/crossdomain.xml' 
+        });
+
+        // When a client recieves a message ...
+        client.addEventListener(NetworkEvent.MESSAGE_RECEIVED, function(event: NetworkEvent) {});
+
+        client.addEventListener(
+            NetworkEvent.MESSAGE_RECEIVED, 
+            function(event: NetworkEvent) {
+                FlxG.log.add(event.data);
+            }
+        );
+
+        // ... and run it!
+        client.start();
+
+        var session = Network.sessions[0];
     }
 
     public function send(msg:Array<Any>):Void {
         // Acoxambrando comunicação
-        onMessage(msg);
+        // onMessage(msg);
+        var session = Network.sessions[0];
+        session.send(msg);
     }
 
     public function sendMove(p:Player):Void {
@@ -164,15 +194,15 @@ class Multiplayer extends FlxSprite {
 
         if (_count >= 3) {
             _count = 0;
-            sendOnOverflow([OP_MOVE, 1, 20, 0, 10, 10]);
-            sendOnOverflow([OP_MOVE, 2, 40, 0, 10, 10]);
-            sendOnOverflow([OP_MOVE, 3, 60, 0, 10, 10]);
-            sendOnOverflow([OP_MOVE, 4, 80, 0, 10, 10]);
+            // sendOnOverflow([OP_MOVE, 1, 20, 0, 10, 10]);
+            // sendOnOverflow([OP_MOVE, 2, 40, 0, 10, 10]);
+            // sendOnOverflow([OP_MOVE, 3, 60, 0, 10, 10]);
+            // sendOnOverflow([OP_MOVE, 4, 80, 0, 10, 10]);
 
-            send([OP_SHOOT, 1, 100, 100]);
+            // send([OP_SHOOT, 1, 100, 100]);
 
-            send([OP_DEAD, 2, 100, 100]);
-            send([OP_DEAD, 3, 100, 100]);
+            // send([OP_DEAD, 2, 100, 100]);
+            // send([OP_DEAD, 3, 100, 100]);
         }
     }
 }
