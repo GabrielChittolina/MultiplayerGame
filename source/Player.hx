@@ -5,7 +5,7 @@ import flixel.FlxG;
 import flixel.input.keyboard.FlxKey;
 
 class Player extends FlxSprite {
-    public var id:Int;
+    public var id:String;
     public var simulated:Bool;
     public var lastSimulation:Date;
     public var speed:Int = 20;
@@ -16,7 +16,7 @@ class Player extends FlxSprite {
     var _rightKey:FlxKey;
     var _fireKey:FlxKey;
 
-    public function new(id:Int, keys:Array<FlxKey> = null) {
+    public function new(id:String, keys:Array<FlxKey> = null) {
         super();
 
         this.id = id;

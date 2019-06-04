@@ -6,54 +6,60 @@ import flixel.FlxG;
 import networking.Network;
 import networking.utils.NetworkEvent;
 import networking.utils.NetworkMode;
+import networking.sessions.Session;
 
 class Multiplayer extends FlxSprite {
-    public static inline var SERVER_IP:String = '127.0.0.1';
+    // public static inline var SERVER_IP:String = '127.0.0.1';
+    public static inline var SERVER_IP:String = '172.20.83.155';
 
     public static inline var OP_NEW_PLAYER:String = 'n';
     public static inline var OP_MOVE:String = 'm'; // [OP_MOVE, id, x, y, velocity.x, velocity.y, acceleration.x, acceleration.y]
-    public static inline var OP_SHOOT:String = 'b'; // [id, x, y]
-    public static inline var OP_DEAD:String = 'd'; // [id, x, y]
+    public static inline var OP_SHOOT:String = 't'; // [id, x, y]
+    public static inline var OP_DEAD:String = 'o'; // [id, x, y]
     
     var _count:Float = 0;
     var _overflowTimer:Float = 0;
     var _overflowInterval:Float = 5; // Minimum time, in seconds, to prevent overload/overflow
     var _overflowLastOp:String = "";
-    var _idJogador:Int;
+    var _idJogador:String;
+    var _client:Session;
     
     public function new() {
         super();
-        _idJogador = -1;
+        _idJogador = "11";
         createClient();
     }
 
     function createClient() {
-        var client = Network.registerSession(NetworkMode.CLIENT, {
+        _client = Network.registerSession(NetworkMode.CLIENT, {
             ip: SERVER_IP, 
             port: 8888, flash_policy_file_url: 'http://'+ SERVER_IP +':9999/crossdomain.xml' 
         });
 
         // When a client recieves a message ...
-        client.addEventListener(NetworkEvent.MESSAGE_RECEIVED, function(event: NetworkEvent) {});
+        _client.addEventListener(NetworkEvent.MESSAGE_RECEIVED, onMessageReceived);
 
-        client.addEventListener(
-            NetworkEvent.MESSAGE_RECEIVED, 
-            function(event: NetworkEvent) {
-                FlxG.log.add(event.data);
-            }
-        );
+        _client.addEventListener(NetworkEvent.INIT_SUCCESS, onInitSuccess);
 
         // ... and run it!
-        client.start();
+        _client.start();
 
         var session = Network.sessions[0];
+    }
+
+    function onMessageReceived(event:NetworkEvent):Void {
+        FlxG.log.add(event.data);
+        onMessage(event.data);
+    }
+
+    function onInitSuccess(event:NetworkEvent):Void {
+        // FlxG.log.add("Success.");
     }
 
     public function send(msg:Array<Any>):Void {
         // Acoxambrando comunicação
         // onMessage(msg);
-        var session = Network.sessions[0];
-        session.send(msg);
+        _client.send(msg);
     }
 
     public function sendMove(p:Player):Void {
@@ -69,7 +75,7 @@ class Multiplayer extends FlxSprite {
         ]);
     }
 
-    public function getMyMultiplayerId():Int {
+    public function getMyMultiplayerId():String {
         return _idJogador;
     }
 
@@ -82,17 +88,15 @@ class Multiplayer extends FlxSprite {
 
         _overflowLastOp = op;
         send(msg);
-        FlxG.log.add("AAAAAA");
     }
     
     // Testa se o id não existe
-    function idTest(id:Int):Bool {
+    function idTest(id:String):Bool {
         if (id == _idJogador) return false;
         
         var p:Player = cast(FlxG.state, PlayState).getPlayerById(id);
 
         if (p == null) {
-            FlxG.log.add("l");
             cast(FlxG.state, PlayState).players.add(new Player(id));
         }
 
@@ -101,12 +105,11 @@ class Multiplayer extends FlxSprite {
 
     public function onMessage(msg:Array<Any>):Void {
         if (msg == null || msg.length == 0) {
-            FlxG.log.error("Mensagem mal formada");
             return;
         }
         var op:String = msg[0];
-        var idRemetente:Int = cast(msg[1], Int);
-
+        trace(msg);
+        var idRemetente:String = cast(msg[1], String);
         if (!idTest(idRemetente)) {
             return;
         }
@@ -115,29 +118,30 @@ class Multiplayer extends FlxSprite {
             case OP_MOVE:
                 opMove(
                     idRemetente, 
-                    cast(msg[2], Int), // x
-                    cast(msg[3], Int), // y
-                    cast(msg[4], Float), 
-                    cast(msg[5], Float)
+                    cast(msg[2], Float), // x
+                    cast(msg[3], Float), // y
+                    cast(msg[4], Float), // velocity.x
+                    cast(msg[5], Float), // velocity.y
+                    cast(msg[6], Float), // acceleration.x
+                    cast(msg[7], Float)  // acceleration.y
                 );
             case OP_SHOOT:
                 opBullet(
                     idRemetente, 
-                    cast(msg[2], Int), 
-                    cast(msg[3], Int)
+                    cast(msg[2], Float), 
+                    cast(msg[3], Float)
                 );
             case OP_DEAD:
                 opDead(
                     idRemetente,
-                    cast(msg[2], Int), 
-                    cast(msg[3], Int)
+                    cast(msg[2], Float), 
+                    cast(msg[3], Float)
                 );
             default:
-                FlxG.log.error("OP erro: " + op);
         }
     }
 
-    public function opDead(id:Int, x:Int, y:Int):Void {
+    public function opDead(id:String, x:Float, y:Float):Void {
         var p:Player = getPlayer(id);
 
         if (p == null) return;
@@ -152,13 +156,13 @@ class Multiplayer extends FlxSprite {
         return state;
     }
 
-    public function getPlayer(id:Int):Player {
+    public function getPlayer(id:String):Player {
         var state:PlayState = getState();
         var p = state.getPlayerById(id);
         return p;
     }
 
-    public function opBullet(id:Int, x:Int, y:Int):Void {
+    public function opBullet(id:String, x:Float, y:Float):Void {
         if (id == _idJogador) return;
         
         var p:Player = getPlayer(id);
@@ -170,7 +174,7 @@ class Multiplayer extends FlxSprite {
         }
     }
 
-    public function opMove(id:Int, x:Int, y:Int, vx:Float, vy:Float):Void {
+    public function opMove(id:String, x:Float, y:Float, vx:Float, vy:Float, ax:Float, ay:Float):Void {
         if (id == _idJogador) return;
         
         var p:Player = getPlayer(id);
@@ -179,6 +183,8 @@ class Multiplayer extends FlxSprite {
                 p.y = y;
                 p.velocity.x = vx;
                 p.velocity.y = vy;
+                p.acceleration.x = ax;
+                p.acceleration.y = ay;
             }
     }
 

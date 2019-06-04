@@ -17,13 +17,13 @@ class PlayState extends FlxState {
 			bullets.add(new Bullet());
 		}
 
-		players.add(new Player(0, [UP, DOWN, LEFT, RIGHT, SPACE]));
+		players.add(new Player("11", [UP, DOWN, LEFT, RIGHT, SPACE]));
         add(multiplayer = new Multiplayer());
 		add(players);
 		add(bullets);
 	}
 
-	public function getPlayerById(id:Int):Player {
+	public function getPlayerById(id:String):Player {
         for (p in players) {
             if (cast(p, Player).id == id) {
                 return cast(p, Player);
